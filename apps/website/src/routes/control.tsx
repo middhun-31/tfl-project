@@ -1,100 +1,200 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { useEffect, useMemo, useState } from 'react';
 
-import { Button } from '../components/button';
-import { Slider } from '../components/slider';
-import { controlEngine } from '../lib/realtime/engines/control-engine';
-import { useControlStore } from '../lib/realtime/stores/control-store';
-import type { MapCity } from '../lib/realtime/types';
+import {
+    busLines,
+    connectTflSync,
+    formatWindowStart,
+    tflStore,
+    updateTflState,
+    useTflStore,
+    windowStarts,
+    type TflDirection,
+    type TflViewMode
+} from '../lib/tfl/observatory';
 
-type ControlSearch = {
-    // Optional label so multiple control clients can be distinguished in the simulator.
-    operator: string;
-};
+const viewModes: Array<{ value: TflViewMode; label: string }> = [
+    { value: 'overview', label: 'Overview' },
+    { value: 'wait-times', label: 'Congestion & Wait Times' },
+    { value: 'bunching', label: 'Bunching Hotspots' },
+    { value: 'countdown', label: 'Live Countdown Board' }
+];
+
+const directions: Array<{ value: TflDirection; label: string }> = [
+    { value: 'all', label: 'All' },
+    { value: 'inbound', label: 'Inbound' },
+    { value: 'outbound', label: 'Outbound' }
+];
 
 export const Route = createFileRoute('/control')({
-    validateSearch: (search: Record<string, unknown>): ControlSearch => {
-        return {
-            // Default operator id keeps the route usable when query params are omitted.
-            operator: typeof search.operator === 'string' ? search.operator : 'A'
-        };
-    },
     component: ControlPage
 });
 
 function ControlPage() {
-    // `/control` models a handheld/operator endpoint:
-    // - it sends intent (city, zoom, selection) into the websocket bus
-    // - it does not render the heavy map visuals itself
-    // This separation mirrors operational setups where controllers and wall screens have
-    // different hardware constraints and UX goals.
-    const { operator } = Route.useSearch();
-    const sliderValue = useControlStore((state) => state.sliderValue);
-    const selectedCity = useControlStore((state) => state.selectedCity);
-    const selectedSegmentIndexes = useControlStore((state) => state.selectedSegmentIndexes);
-    // Static city list is intentionally explicit for educational readability.
-    const cities: Array<{ value: MapCity; label: string }> = [
-        { value: 'london', label: 'London' },
-        { value: 'paris', label: 'Paris' },
-        { value: 'berlin', label: 'Berlin' },
-        { value: 'madrid', label: 'Madrid' },
-        { value: 'rome', label: 'Rome' },
-        { value: 'amsterdam', label: 'Amsterdam' }
-    ];
+    const state = useTflStore();
+    const [isPlaying, setIsPlaying] = useState(false);
+    const selectedIndex = useMemo(
+        () => Math.max(0, windowStarts.indexOf(state.windowStart)),
+        [state.windowStart]
+    );
+
+    useEffect(() => connectTflSync(), []);
+
+    useEffect(() => {
+        if (!isPlaying || windowStarts.length < 2) return;
+
+        const timer = window.setInterval(() => {
+            const currentIndex = windowStarts.indexOf(tflStore.state.windowStart);
+            const nextIndex = (currentIndex + 1) % windowStarts.length;
+            updateTflState({ windowStart: windowStarts[nextIndex] ?? windowStarts[0] ?? '' });
+        }, 3000);
+
+        return () => window.clearInterval(timer);
+    }, [isPlaying]);
+
+    const toggleLine = (line: string) => {
+        const nextLines = state.selectedLines.includes(line)
+            ? state.selectedLines.filter((selectedLine) => selectedLine !== line)
+            : [...state.selectedLines, line];
+        updateTflState({ selectedLines: nextLines });
+    };
 
     return (
-        <main className="h-screen w-screen overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
-            <div className="flex h-full w-full flex-col p-3">
-                <header className="mb-3 flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2">
-                    <div>
-                        <p className="text-[10px] tracking-[0.2em] text-[var(--muted-foreground)] uppercase">
-                            Operator
-                        </p>
-                        <h1 className="text-sm font-semibold">Control Panel {operator}</h1>
-                    </div>
-                    <span className="rounded-full bg-[var(--primary)] px-2 py-1 text-[10px] font-medium text-[var(--primary-foreground)]">
-                        /control
-                    </span>
-                </header>
+        <main className="tfl-panel">
+            <header className="tfl-panel-header">
+                <div>
+                    <p className="tfl-eyebrow">DATA OBSERVATORY · OPERATOR PANEL</p>
+                    <h1>TfL Bus Network Controls</h1>
+                </div>
+                <a className="tfl-open-link" href="/screen" target="_blank" rel="noreferrer">
+                    Open display ↗
+                </a>
+            </header>
 
-                <section className="flex gap-4">
-                    <div className="grid grid-cols-2 gap-2">
-                        {cities.map((city) => (
-                            <Button
-                                key={city.value}
-                                // Each city click emits a deterministic map-view command
-                                // so every connected screen converges on the same location.
-                                onClick={() => controlEngine.selectCity(city.value)}
-                                variant={selectedCity === city.value ? 'highlight' : 'normal'}
-                                className="text-left"
-                            >
-                                {city.label}
-                            </Button>
-                        ))}
+            <section className="tfl-control-card">
+                <div className="tfl-section-heading">
+                    <div>
+                        <p className="tfl-eyebrow">TIME WINDOW</p>
+                        <h2>{formatWindowStart(state.windowStart)}</h2>
                     </div>
-                    <div className="flex flex-col gap-2">
-                        <Slider
-                            value={sliderValue}
-                            // Slider updates are throttled inside the engine before broadcasting.
-                            onValueChange={(value) => controlEngine.setSliderValue(value)}
-                            onInteractionChange={(isInteracting) =>
-                                controlEngine.setSliderInteracting(isInteracting)
-                            }
-                        />
-                        <p className="text-xs text-[var(--muted-foreground)]">
-                            Zoom Level: {sliderValue.toFixed(0)}
-                        </p>
-                        <p className="text-xs text-[var(--muted-foreground)]">
-                            Selected Lines: {selectedSegmentIndexes.length}
-                        </p>
-                        <Button
-                            onClick={() => void controlEngine.shuffleSegments()}
-                            variant="normal"
+                    <button
+                        type="button"
+                        className={`tfl-play-button${isPlaying ? ' is-playing' : ''}`}
+                        onClick={() => setIsPlaying((playing) => !playing)}
+                        aria-pressed={isPlaying}
+                    >
+                        <span aria-hidden="true">{isPlaying ? 'Ⅱ' : '▶'}</span>
+                        {isPlaying ? 'Pause' : 'Play'}
+                    </button>
+                </div>
+                <input
+                    className="tfl-range"
+                    type="range"
+                    min={0}
+                    max={Math.max(0, windowStarts.length - 1)}
+                    step={1}
+                    value={selectedIndex}
+                    onChange={(event) => {
+                        const nextWindow = windowStarts[Number(event.currentTarget.value)];
+                        if (nextWindow) updateTflState({ windowStart: nextWindow });
+                    }}
+                    aria-label="Select five-minute data window"
+                />
+                <div className="tfl-range-captions">
+                    <span>{formatWindowStart(windowStarts[0] ?? '')}</span>
+                    <span>{formatWindowStart(windowStarts[windowStarts.length - 1] ?? '')}</span>
+                </div>
+                <p className="tfl-control-hint">
+                    {windowStarts.length} five-minute snapshots · playback advances every 3 seconds
+                </p>
+            </section>
+
+            <section className="tfl-control-card">
+                <div className="tfl-section-heading">
+                    <div>
+                        <p className="tfl-eyebrow">BUS LINE FILTER</p>
+                        <h2>Choose routes</h2>
+                    </div>
+                    <div className="tfl-inline-actions">
+                        <button
+                            type="button"
+                            onClick={() => updateTflState({ selectedLines: busLines })}
                         >
-                            Shuffle Selection
-                        </Button>
+                            Select All
+                        </button>
+                        <button type="button" onClick={() => updateTflState({ selectedLines: [] })}>
+                            Clear
+                        </button>
                     </div>
-                </section>
-            </div>
+                </div>
+                <div className="tfl-pill-list">
+                    {busLines.map((line) => {
+                        const isSelected = state.selectedLines.includes(line);
+                        return (
+                            <button
+                                type="button"
+                                key={line}
+                                className={`tfl-pill${isSelected ? ' is-selected' : ''}`}
+                                onClick={() => toggleLine(line)}
+                                aria-pressed={isSelected}
+                            >
+                                <span className="tfl-line-dot" />
+                                Route {line}
+                            </button>
+                        );
+                    })}
+                    {busLines.length === 0 && (
+                        <p className="tfl-control-hint">
+                            No bus lines are present in this snapshot.
+                        </p>
+                    )}
+                </div>
+            </section>
+
+            <section className="tfl-control-card">
+                <p className="tfl-eyebrow">DIRECTION</p>
+                <div className="tfl-segmented-control" role="group" aria-label="Direction filter">
+                    {directions.map((direction) => (
+                        <button
+                            type="button"
+                            key={direction.value}
+                            className={state.direction === direction.value ? 'is-selected' : ''}
+                            onClick={() => updateTflState({ direction: direction.value })}
+                            aria-pressed={state.direction === direction.value}
+                        >
+                            {direction.label}
+                        </button>
+                    ))}
+                </div>
+            </section>
+
+            <section className="tfl-control-card">
+                <p className="tfl-eyebrow">DISPLAY MODE</p>
+                <div className="tfl-mode-list" role="group" aria-label="Display mode">
+                    {viewModes.map((mode, index) => (
+                        <button
+                            type="button"
+                            key={mode.value}
+                            className={`tfl-mode-option${
+                                state.viewMode === mode.value ? ' is-selected' : ''
+                            }`}
+                            onClick={() => updateTflState({ viewMode: mode.value })}
+                            aria-pressed={state.viewMode === mode.value}
+                        >
+                            <span className="tfl-mode-index">0{index + 1}</span>
+                            <span>{mode.label}</span>
+                            <span className="tfl-mode-arrow" aria-hidden="true">
+                                →
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            </section>
+
+            <footer className="tfl-panel-footer">
+                <span className="tfl-live-dot" />
+                Changes sync to open displays in this browser
+            </footer>
         </main>
     );
 }

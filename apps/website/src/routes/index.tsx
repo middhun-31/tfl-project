@@ -96,28 +96,51 @@ function HomePage() {
     return (
         <main className="mx-auto flex h-screen w-full max-w-7xl flex-col gap-4 overflow-hidden px-4 py-4 text-[var(--foreground)] md:px-6">
             <section className="flex items-center justify-between">
-                <h1 className="text-lg font-semibold tracking-tight md:text-xl">
-                    DO Dev Playground
-                </h1>
-                <button
-                    type="button"
-                    onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                    aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-                    title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-                    className="rounded-md border border-[var(--border)] bg-[var(--card)] p-1.5 text-[var(--card-foreground)]"
-                >
-                    {isDark ? (
-                        <SunIcon size={16} weight="duotone" />
-                    ) : (
-                        <MoonIcon size={16} weight="duotone" />
-                    )}
-                </button>
+                <div>
+                    <p className="text-[9px] font-semibold tracking-[0.18em] text-[var(--muted-foreground)] uppercase">
+                        Data Observatory · TfL Gold Snapshot
+                    </p>
+                    <h1 className="text-lg font-semibold tracking-tight md:text-xl">
+                        TfL Live Bus Network Observatory
+                    </h1>
+                </div>
+                <div className="flex items-center gap-2">
+                    <a
+                        href="/control"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-md border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-xs text-[var(--card-foreground)]"
+                    >
+                        Open Panel
+                    </a>
+                    <a
+                        href="/screen"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-md border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-xs text-[var(--card-foreground)]"
+                    >
+                        Open Display
+                    </a>
+                    <button
+                        type="button"
+                        onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                        aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+                        title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+                        className="rounded-md border border-[var(--border)] bg-[var(--card)] p-1.5 text-[var(--card-foreground)]"
+                    >
+                        {isDark ? (
+                            <SunIcon size={16} weight="duotone" />
+                        ) : (
+                            <MoonIcon size={16} weight="duotone" />
+                        )}
+                    </button>
+                </div>
             </section>
 
             <section className="flex min-h-0 flex-col rounded-xl border border-[var(--border)] bg-[var(--muted)] p-3">
                 <div className="mb-2 flex items-center justify-between">
                     <h2 className="text-sm font-medium text-[var(--foreground)]">
-                        Mini-DO (2 x 3) · 1920x1080 per unit
+                        Live Bus Display Wall · 2 x 3
                     </h2>
                     <span className="rounded-full bg-[var(--primary)] px-2 py-1 text-[10px] font-medium text-[var(--primary-foreground)]">
                         /screen

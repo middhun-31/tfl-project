@@ -1,53 +1,34 @@
-# DO App Kit
+# TfL Bus Network Observatory
 
-A starter for creating DO custom applications.
+A standalone Data Observatory display and operator panel for the TfL Gold-layer
+bus-arrival snapshot in `apps/website/src/data/tfl_gold_insights.json`. The
+snapshot represents the Gold output of a Bronze → Silver → Gold medallion
+pipeline, aggregated into five-minute windows by route, station, and direction.
+No TfL API, database, or external backend is required at runtime.
 
-This starter repo is built with Vite+.
+## Run locally
 
-## Runtime Context Note (Top-Level vs Iframe)
-
-Data Observatory deployments may render an app either:
-
-- as a top-level document, or
-- inside one or more iframes (for multi-screen orchestration/simulation).
-
-This matters for graphics-heavy features: iframe-based deployments can increase pressure on
-browser/GPU context limits (especially with WebGL). For that reason, this example includes
-runtime-aware rendering decisions and fallback strategies so behavior remains stable in both modes.
-
-## Stack Used In This Example
-
-The example app in `apps/website` focuses on three package groups:
-
-- `@tanstack/react-router`: file-based routing and route-level app structure (`/`, `/control`, `/screen`, `/bus`).
-- `@tanstack/pacer`: throttling of high-frequency control events before broadcast (for example slider updates).
-- Mapping stack:
-  `maplibre-gl`, `@vis.gl/react-maplibre`, `@deck.gl/core`, `@deck.gl/layers`, `@deck.gl/react`.
-  These are used to render the map, draw animated paths/markers, and support both richer and iframe-safe rendering paths. We strongly recommend the use of Deck.GL with MapLibre as the DO natively supports them.
-- `vite-plus` (`vp`): monorepo task runner/repo manager used for project commands (`vp run dev`, `vp run build -r`, etc.).
-
-## Development
-
-- Check everything is ready:
+This repository is a pnpm workspace using Vite+:
 
 ```bash
-vp run ready
+pnpm install
+pnpm dev
 ```
 
-- Run the tests:
+Open the root URL for the display-wall preview. The full-screen Display is at
+`/screen`; the operator Panel is at `/control`.
 
-```bash
-vp run test -r
-```
+## Use the Panel and Display
 
-- Build the monorepo:
+- Scrub the available five-minute windows or press **Play** to advance every
+  three seconds.
+- Select bus routes and inbound/outbound direction to filter the Display.
+- Choose **Overview**, **Congestion & Wait Times**, **Bunching Hotspots**, or
+  **Live Countdown Board** to change the Display focus.
+- Open `/screen` and `/control` in separate same-origin tabs or iframes; state
+  changes synchronize through the browser's `BroadcastChannel` API.
 
-```bash
-vp run build -r
-```
-
-- Run the development server:
-
-```bash
-vp run dev
-```
+The Display calculates its KPIs, wait-time and bunching bar charts, and
+countdown table directly from the bundled snapshot. The charts use native
+browser rendering, so no additional charting package or network service is
+needed.

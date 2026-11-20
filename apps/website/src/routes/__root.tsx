@@ -21,11 +21,11 @@ export const Route = createRootRouteWithContext()({
                 content: 'width=device-width, initial-scale=1'
             },
             {
-                title: 'DO app'
+                title: 'TfL Live Bus Network Observatory'
             },
             {
                 name: 'description',
-                content: 'A minimal DO app starter'
+                content: 'Standalone TfL bus network insights from the Gold lakehouse snapshot'
             }
         ],
         links: [
