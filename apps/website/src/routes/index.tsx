@@ -12,10 +12,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTheme } from '../lib/theme-provider';
 
 type WallScreen = {
-    // Logical wall coordinates.
     c: number;
     r: number;
     id: string;
+    tile: number;
 };
 
 export const Route = createFileRoute('/')({
@@ -27,12 +27,11 @@ function HomePage() {
     const isDark = theme === 'dark';
 
     const wallScreens = useMemo<WallScreen[]>(() => {
-        // Build a 3x2 wall coordinate system.
-        // These coordinates map directly to `/screen?c=<col>&r=<row>`.
+        // Build a two-row, three-column wall with one distinct view per tile.
         return Array.from({ length: 6 }, (_, index) => {
             const c = index % 3;
             const r = Math.floor(index / 3);
-            return { c, r, id: `${r}-${c}` };
+            return { c, r, id: `${r}-${c}`, tile: index + 1 };
         });
     }, []);
 
@@ -69,7 +68,7 @@ function HomePage() {
         const nonce = refreshNonceById[screen.id] ?? 0;
         const disconnected = disconnectedById[screen.id] ?? false;
 
-        return disconnected ? `/noop?v=${nonce}` : `/screen?c=${screen.c}&r=${screen.r}&v=${nonce}`;
+        return disconnected ? `/noop?v=${nonce}` : `/screen?tile=${screen.tile}&v=${nonce}`;
     };
 
     const toggleControlDisconnect = (id: string) => {
